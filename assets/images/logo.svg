@@ -1,0 +1,45 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF69B4;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FF1493;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8A2BE2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF69B4;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FF1493;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8A2BE2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#logoGradient)" opacity="0.1"/>
+  
+  <!-- Main logo icon - stylized "P" with piercing elements -->
+  <g transform="translate(100, 100)">
+    <!-- Outer circle -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="url(#logoGradient)" stroke-width="4" opacity="0.3"/>
+    
+    <!-- Inner circle -->
+    <circle cx="0" cy="0" r="45" fill="none" stroke="url(#logoGradient)" stroke-width="3" opacity="0.5"/>
+    
+    <!-- Stylized "P" -->
+    <path d="M-25,-35 L-25,35 M-25,-35 L15,-35 M15,-35 L15,-5 M15,-5 L-5,-5 M-5,-5 L-5,5 M-5,5 L15,5" 
+          fill="none" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Piercing dots -->
+    <circle cx="-15" cy="-20" r="3" fill="url(#logoGradient)" opacity="0.8"/>
+    <circle cx="5" cy="-20" r="3" fill="url(#logoGradient)" opacity="0.8"/>
+    <circle cx="-15" cy="20" r="3" fill="url(#logoGradient)" opacity="0.8"/>
+    <circle cx="5" cy="20" r="3" fill="url(#logoGradient)" opacity="0.8"/>
+    
+    <!-- Decorative elements -->
+    <circle cx="0" cy="-30" r="2" fill="url(#logoGradient)" opacity="0.6"/>
+    <circle cx="0" cy="30" r="2" fill="url(#logoGradient)" opacity="0.6"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="160" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="url(#textGradient)">
+    Pop Pierce Studio
+  </text>
+</svg>
