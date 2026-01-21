@@ -1,4 +1,10 @@
 {
   "logos": {},
-  "gallery": []
+  "gallery": [
+    {
+      "type": "image",
+      "src": "https://raw.githubusercontent.com/poppiercestudio/pop-pierce-studio-website/main/assets/images/image-1769034653901.png",
+      "description": "prueba2"
+    }
+  ]
 }
