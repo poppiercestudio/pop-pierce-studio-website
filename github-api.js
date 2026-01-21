@@ -41,6 +41,40 @@ async function getGitHubFile() {
 }
 
 /**
+ * Obtiene el SHA actual del archivo desde GitHub
+ */
+async function getFileSHA(path) {
+    const token = getGitHubToken();
+    const { owner, repo, branch } = GITHUB_CONFIG;
+    
+    try {
+        const response = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+            {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            }
+        );
+        
+        if (response.status === 404) {
+            return null; // El archivo no existe
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener SHA: ${response.statusText}`);
+        }
+        
+        const fileData = await response.json();
+        return fileData.sha;
+    } catch (error) {
+        console.error('Error al obtener SHA:', error);
+        return null;
+    }
+}
+
+/**
  * Actualiza el archivo data.json en GitHub
  */
 async function updateGitHubFile(data) {
@@ -51,68 +85,81 @@ async function updateGitHubFile(data) {
     const token = getGitHubToken();
     const { owner, repo, branch, path } = GITHUB_CONFIG;
 
-    try {
-        // Primero obtener el SHA del archivo actual (necesario para actualizar)
-        let sha = null;
+    // Intentar hasta 3 veces en caso de error de SHA
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
         try {
-            const getResponse = await fetch(
-                `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+            // Obtener el SHA actual del archivo (siempre obtenerlo fresco)
+            const sha = await getFileSHA(path);
+
+            // Convertir datos a base64
+            const content = JSON.stringify(data, null, 2);
+            const encodedContent = btoa(unescape(encodeURIComponent(content)));
+
+            // Preparar el cuerpo de la petición
+            const body = {
+                message: `Actualización automática: ${new Date().toLocaleString('es-MX')}`,
+                content: encodedContent,
+                branch: branch
+            };
+
+            if (sha) {
+                body.sha = sha;
+            }
+
+            // Hacer el commit
+            const response = await fetch(
+                `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
                 {
+                    method: 'PUT',
                     headers: {
                         'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
                 }
             );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                
+                // Si es error de SHA mismatch, intentar de nuevo
+                if (errorData.message && errorData.message.includes('does not match')) {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        // Esperar un poco antes de reintentar
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue; // Reintentar
+                    }
+                }
+                
+                throw new Error(`Error al actualizar: ${errorData.message || response.statusText}`);
+            }
+
+            const result = await response.json();
+            return result;
             
-            if (getResponse.ok) {
-                const fileData = await getResponse.json();
-                sha = fileData.sha;
+        } catch (error) {
+            attempts++;
+            
+            // Si es el último intento, lanzar el error
+            if (attempts >= maxAttempts) {
+                console.error('Error al actualizar archivo en GitHub después de', maxAttempts, 'intentos:', error);
+                throw error;
             }
-        } catch (e) {
-            // El archivo no existe, se creará uno nuevo
-            console.log('Archivo no existe, se creará uno nuevo');
-        }
-
-        // Convertir datos a base64
-        const content = JSON.stringify(data, null, 2);
-        const encodedContent = btoa(unescape(encodeURIComponent(content)));
-
-        // Preparar el cuerpo de la petición
-        const body = {
-            message: `Actualización automática: ${new Date().toLocaleString('es-MX')}`,
-            content: encodedContent,
-            branch: branch
-        };
-
-        if (sha) {
-            body.sha = sha;
-        }
-
-        // Hacer el commit
-        const response = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
+            
+            // Si es error de SHA, esperar y reintentar
+            if (error.message && error.message.includes('does not match')) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue;
             }
-        );
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Error al actualizar: ${errorData.message || response.statusText}`);
+            
+            // Otro tipo de error, lanzarlo inmediatamente
+            throw error;
         }
-
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('Error al actualizar archivo en GitHub:', error);
-        throw error;
     }
 }
 
