@@ -137,13 +137,31 @@ function showLoginScreen() {
 }
 
 function showAdminPanel() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadGitHubConfig();
-    loadFromGitHub().then(() => {
-        loadLogos();
-        loadGallery();
-    });
+    try {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        loadGitHubConfig();
+        
+        // Cargar desde GitHub de forma segura
+        loadFromGitHub().then(() => {
+            if (typeof loadLogos === 'function') loadLogos();
+            if (typeof loadGallery === 'function') loadGallery();
+        }).catch(error => {
+            console.error('Error al cargar desde GitHub:', error);
+            // Aún así, cargar datos locales
+            if (typeof loadLogos === 'function') loadLogos();
+            if (typeof loadGallery === 'function') loadGallery();
+        });
+    } catch (error) {
+        console.error('Error al mostrar panel de administración:', error);
+        // Intentar mostrar el panel de todas formas
+        try {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        } catch (e) {
+            console.error('Error crítico:', e);
+        }
+    }
 }
 
 function logout() {
@@ -1029,45 +1047,59 @@ function restoreOriginalGallery() {
 
 // Cargar datos desde GitHub al iniciar
 async function loadFromGitHub() {
-    let data = null;
-    
-    // Intentar cargar desde GitHub API si está configurado
-    if (isGitHubConfigured()) {
-        try {
-            data = await getGitHubFile();
-        } catch (error) {
-            console.error('Error al cargar desde GitHub API:', error);
-            // Continuar para intentar cargar desde URL pública
-        }
-    }
-    
-    // Si no se pudo cargar desde API o no está configurado, intentar desde URL pública
-    if (!data) {
-        try {
-            // Intentar cargar desde la URL pública de GitHub Pages
-            const { owner, repo, branch } = GITHUB_CONFIG;
-            const publicUrl = `https://${owner}.github.io/${repo}/data.json?t=${Date.now()}`;
-            
-            const response = await fetch(publicUrl);
-            if (response.ok) {
-                data = await response.json();
-                console.log('Datos cargados desde URL pública de GitHub Pages');
-                
-                // Mostrar notificación informativa
-                if (!isGitHubConfigured()) {
-                    showNotification('Datos cargados desde GitHub. Configura tu token en la pestaña "Configuración" para poder guardar cambios.', 'info');
+    try {
+        let data = null;
+        
+        // Intentar cargar desde GitHub API si está configurado
+        if (typeof isGitHubConfigured === 'function' && isGitHubConfigured()) {
+            try {
+                if (typeof getGitHubFile === 'function') {
+                    data = await getGitHubFile();
                 }
-            }
-        } catch (error) {
-            console.error('Error al cargar desde URL pública:', error);
-            // Si no se puede cargar, usar datos locales o vacíos
-            if (!data) {
-                console.log('No se pudo cargar desde GitHub, usando datos locales');
-                return;
+            } catch (error) {
+                console.error('Error al cargar desde GitHub API:', error);
+                // Continuar para intentar cargar desde URL pública
             }
         }
-    }
+        
+        // Si no se pudo cargar desde API o no está configurado, intentar desde URL pública
+        if (!data && typeof GITHUB_CONFIG !== 'undefined' && GITHUB_CONFIG && GITHUB_CONFIG.owner && GITHUB_CONFIG.repo) {
+            try {
+                // Intentar cargar desde la URL pública de GitHub Pages
+                const { owner, repo } = GITHUB_CONFIG;
+                const publicUrl = `https://${owner}.github.io/${repo}/data.json?t=${Date.now()}`;
+                
+                const response = await fetch(publicUrl);
+                if (response.ok) {
+                    data = await response.json();
+                    console.log('Datos cargados desde URL pública de GitHub Pages');
+                    
+                    // Mostrar notificación informativa solo si no está configurado
+                    if (typeof isGitHubConfigured === 'function' && !isGitHubConfigured()) {
+                        // Usar setTimeout para evitar errores si showNotification no está disponible aún
+                        setTimeout(() => {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Datos cargados desde GitHub. Configura tu token en la pestaña "Configuración" para poder guardar cambios.', 'info');
+                            }
+                        }, 1000);
+                    }
+                }
+            } catch (error) {
+                console.error('Error al cargar desde URL pública:', error);
+                // Si no se puede cargar, continuar con datos locales
+            }
+        }
+        
+        // Si no hay datos de GitHub, continuar con datos locales
+        if (!data) {
+            console.log('No se pudo cargar desde GitHub, usando datos locales');
+            // Aún así, recargar la interfaz con datos locales
+            if (typeof loadLogos === 'function') loadLogos();
+            if (typeof loadGallery === 'function') loadGallery();
+            return;
+        }
     
+    // Si hay datos de GitHub, procesarlos
     if (data) {
         // Obtener datos locales actuales
         const currentLocalLogos = getLogos();
@@ -1200,11 +1232,17 @@ async function loadFromGitHub() {
         }
         
         // Recargar la interfaz
-        loadLogos();
-        loadGallery();
+        if (typeof loadLogos === 'function') loadLogos();
+        if (typeof loadGallery === 'function') loadGallery();
     } catch (error) {
         console.error('Error al cargar desde GitHub:', error);
-        // Continuar con datos locales
+        // Continuar con datos locales - asegurar que la interfaz se cargue
+        try {
+            if (typeof loadLogos === 'function') loadLogos();
+            if (typeof loadGallery === 'function') loadGallery();
+        } catch (localError) {
+            console.error('Error al cargar datos locales:', localError);
+        }
     }
 }
 
